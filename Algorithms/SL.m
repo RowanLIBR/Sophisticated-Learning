@@ -1,17 +1,7 @@
-%function [] = SL(seed)
-%disp("SEED:")
-%disp(seed)
-%rng(str2double(seed));
-%rng
-
-
-
-previous_positions = [];
-previous_positions(end+1) = 55; % hill
-
+function [] = SL(seed)
+rng(str2double(seed));
+rng
 hill_1 = 55;
-
-
 true_food_source_1 = 71;
 true_food_source_2 = 43;
 true_food_source_3 =57;
@@ -29,12 +19,8 @@ novelty_weight = 10;
 learning_weight = 40;
 epistemic_weight = 1;
 preference_weight = 10;
-
-traj_count(1) = 0;
-
 num_states = 100;
-num_states_low = 25;
-Q_table = zeros(5,5,num_states_low);
+
 A{1}(:,:,:) = zeros(num_states,num_states,4);
 a{1}(:,:,:) = zeros(num_states,num_states,4);
 for i = 1:num_states
@@ -126,34 +112,15 @@ a{2}(4,true_sleep_source_4,2) = 0.3;
 a{2}(4,true_sleep_source_4,3) = 0.3;
 a{2}(4,true_sleep_source_4,4) = 0.3;
 
-
-temperature = 0;
-
-
 D{1} = zeros(1,num_states)'; %position in environment
 D{2} = [0.25,0.25,0.25,0.25]';
-
 D{1}(51) = 1;
-
 survival(:) = zeros(1,70);
-
 D{1} = normalise(D{1});
-resource_cutoffs = [24, 23, 27];
-num_factors = 1;
 T = 27;
 num_modalities = 3;
-num_iterations = 50;
-TimeConst = 4;
-num_states = 100;
-num_states_low = 100;
 
 short_term_memory(:,:,:,:) = zeros(35,35,35,400);
-
-RL_state_belifs = zeros(T,num_states);
-G = zeros(5);
-posterior_beta = 1;
-gamma(1) = 1/posterior_beta; % expected free energy precision
-beta = 1;
 
 %%% Distributions %%%
 
@@ -165,9 +132,7 @@ for action = 1:5
                0.05,   0.95,   0,    0;
                0,     0.05,   0.95,  0;
                0,     0,     0.05   0.95 ];
-    
-    % Uniform prior over season transitions. This is what the agent must
-    % learn
+
     b{2}(:,:,action) = [  0.25,  0.25,     0.25     0.25;
                0.25,     0.25,     0.25,    0.25;
                0.25,     0.25,     0.25,    0.25;
@@ -200,33 +165,13 @@ end
 
 
 b{1} = B{1};
-C{1} = ones(11,9); % preference for positional observation. Uniform.
-C_overall{1} = zeros(T,9);
-
-
 chosen_action = zeros(1,T-1);
-preference_values = zeros(4,T);
-
-for factor = 1:num_factors
-    NumStates(factor) = size(B{factor},1);   % number of hidden states
-    NumControllable_transitions(factor) = size(B{factor},3); % number of hidden controllable hidden states for each factor (number of B matrices)
-end
-
-
-
-
 time_since_food = 0;    
 time_since_water = 0;
 time_since_sleep = 0;
 file_name = strcat(char(datetime('now','Format','HH-mm-ss-SSS')),'.txt');
-deterministic_nodes = java.util.Stack();
-stochastic_nodes = java.util.Stack();
 t = 1;
-used_memory_count = 0;
-surety = 1;
-simulated_time = 0;
-memory_count = 0;
-a_old = a{2};
+
 for trial = 1:120
 short_term_memory(:,:,:,:) = 0;    
 while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep < 25)
@@ -239,15 +184,11 @@ while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep
             true_states{trial}(1, t) = 51;
             true_states{trial}(2, t) = find(cumsum(D{2}) >= rand,1);
         else
-      %       P{t} = B{factor}(:,higher_level_state, higher_level_action);
             if factor == 1
-                %b = B{1}(:,:,chosen_action(t-1));
                 Q{t,factor} = (B{1}(:,:,chosen_action(t-1))*Q{t-1,factor}')';
-                %Q{t,factor} = Q{t,factor}';
                 true_states{trial}(factor, t) = find(cumsum(B{1}(:,true_states{trial}(factor,t-1),chosen_action(t-1)))>= rand,1);
             else
-                %b = B{2}(:,:,:);
-                Q{t,factor} = (bb{2}(:,:,chosen_action(t-1))*Q{t-1,factor}')';%(B{2}(:,:)'
+                Q{t,factor} = (bb{2}(:,:,chosen_action(t-1))*Q{t-1,factor}')';
                 true_states{trial}(factor, t) = find(cumsum(B{2}(:,true_states{trial}(factor,t-1),1))>= rand,1);   
                  
             end
@@ -292,15 +233,10 @@ while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep
     end
     true_t = t;
     if t > 1
-       
-    trajectory_history = [];
-    
       start = t - 6;
     if start <= 0
         start = 1;
     end
-    qq = P;
-    novelty = 0;
     bb{2} = normalise_matrix(b{2});
     y{2} = normalise_matrix(a{2});
     
@@ -309,15 +245,10 @@ while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep
     predictive_observations_posterior{3,t} = normalise(y{3}(:,:)*qs(:))';
     predicted_posterior = calculate_posterior(Q,y,predictive_observations_posterior,t);
     for timey = start:t
-%          if timey ~= t
             L = spm_backwards(O,Q,A,bb,chosen_action,timey,t);
             LL{2} = L;
             LL{1} = Q{timey,1};
-%         else
-%             L = post{t,2};    
-%             LL{2} = L;
-%             LL{1} = Q{timey,1};
-%         end
+
         if (timey > start && ~isequal(round(L,3),round(Q{timey,2},3)')) || (timey == t) 
 
 
@@ -377,10 +308,7 @@ while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep
     y{1} = A{1};
     y{3} = A{3};
     
-    prefs = determineObservationPreference(time_since_food, time_since_water, time_since_sleep);
-    time_since_resources = [time_since_food, time_since_water, time_since_sleep];
-
-    horizon = min([9,min([22-time_since_food, 20-time_since_water, 25-time_since_sleep])]);%round(calculateLookAhead(0.24,2.7,time_since_resources, resource_cutoffs));
+    horizon = min([9,min([22-time_since_food, 20-time_since_water, 25-time_since_sleep])]);
     if horizon == 0
         horizon = 1;
     end
@@ -391,15 +319,12 @@ while(t<100 && time_since_food < 22 && time_since_water < 20 && time_since_sleep
     if t > 1 && ~isequal(round(predicted_posterior{t,2},1), round(P{t,2},1))
         % if there is a relatively large state-prediction error, reset
         % memory as it's probably innacurate. 
-        short_term_memory(:,:,:,:) = 0;
-%         
+        short_term_memory(:,:,:,:) = 0;         
     end
     if current_pos == 55
         short_term_memory(:,:,:,:) = 0;
     end
 
-    cur_state = spm_cross(P{t});
-    cur_state = find(cumsum(cur_state(:))>=rand,1);
     best_actions = [];
     % Start tree search from current time point
     
@@ -415,17 +340,14 @@ else
     alive_status = 0;
 end
 
-% fid =fopen('results.txt', 'w' );
-%fid = fopen(file_name, 'a+');
-%fprintf(fid, '%f\n', t);
+fid = fopen(file_name, 'a+');
+fprintf(fid, '%f\n', t);
 t = 1;
 time_since_food = 0;
 time_since_water = 0;
 time_since_sleep = 0;
 end
-%fprintf(fid, '%f\n', 'targetted forgetting');
-
-%end
+end
 
 
 
